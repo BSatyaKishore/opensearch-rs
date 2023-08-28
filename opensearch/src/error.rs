@@ -34,6 +34,9 @@
  */
 use crate::http::{transport::BuildError, StatusCode};
 use std::{error, fmt, io};
+use reqwest_middleware;
+use reqwest_middleware::Error::Reqwest;
+use reqwest_middleware::Error::Middleware;
 
 /// An error with the client.
 ///
@@ -55,6 +58,9 @@ enum Kind {
     /// HTTP library error
     Http(reqwest::Error),
 
+    /// Middleware Error 
+    Middleware(reqwest_middleware::Error),
+
     /// IO error
     Io(io::Error),
 
@@ -74,6 +80,19 @@ impl From<reqwest::Error> for Error {
     fn from(err: reqwest::Error) -> Error {
         Error {
             kind: Kind::Http(err),
+        }
+    }
+}
+
+impl From<reqwest_middleware::Error> for Error {
+    fn from(err: reqwest_middleware::Error) -> Error {
+        match err {
+            Middleware(e) => Error{
+                kind: Kind::Middleware(Middleware(e))
+            },
+            Reqwest(e) => Error {
+                kind: Kind::Http(e),
+            }
         }
     }
 }
@@ -137,6 +156,7 @@ impl error::Error for Error {
             Kind::Build(err) => Some(err),
             Kind::Lib(_) => None,
             Kind::Http(err) => Some(err),
+            Kind::Middleware(err) => Some(err),
             Kind::Io(err) => Some(err),
             Kind::Json(err) => Some(err),
         }
@@ -149,6 +169,7 @@ impl fmt::Display for Error {
             Kind::Build(err) => err.fmt(f),
             Kind::Lib(err) => err.fmt(f),
             Kind::Http(err) => err.fmt(f),
+            Kind::Middleware(err) => err.fmt(f),
             Kind::Io(err) => err.fmt(f),
             Kind::Json(err) => err.fmt(f),
         }
