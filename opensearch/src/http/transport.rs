@@ -58,6 +58,7 @@ use std::{
     io::{self, Write},
     time::Duration,
 };
+use reqwest_middleware::{Error as ReqwestError};
 use url::Url;
 
 /// Error that can occur when building a [Transport]
@@ -323,7 +324,7 @@ impl TransportBuilder {
 
         let client = client_builder.build()?;
         Ok(Transport {
-            client,
+            client: client.into(),
             conn_pool: self.conn_pool,
             credentials: self.credentials,
             #[cfg(feature = "aws-auth")]
@@ -364,7 +365,7 @@ impl Connection {
 /// using a [Connection] selected from a [ConnectionPool]
 #[derive(Debug, Clone)]
 pub struct Transport {
-    client: reqwest::Client,
+    pub client: reqwest_middleware::ClientWithMiddleware,
     credentials: Option<Credentials>,
     conn_pool: Box<dyn ConnectionPool>,
     #[cfg(feature = "aws-auth")]
@@ -395,6 +396,7 @@ impl Transport {
         let transport = TransportBuilder::new(conn_pool).build()?;
         Ok(transport)
     }
+
 
     /// Creates an asynchronous request that can be awaited
     pub async fn send<B, Q>(
